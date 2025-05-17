@@ -1,0 +1,39 @@
+name: Sync Gitee Repo to GitHub
+
+on:
+  schedule:
+    - cron: '0 18 * * *'  # 每天北京时间 2 点（对应 UTC 18:00）
+  workflow_dispatch:  # 支持手动触发
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 设置 Git 身份
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: 克隆 Gitee 仓库
+        run: |
+          git clone --depth=1 https://gitee.com/PizazzXS/another-d.git gitee-source
+
+      - name: 克隆当前 GitHub 仓库
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 同步 Gitee 内容到 GitHub（排除 .git）
+        run: |
+          rsync -av --delete --exclude=".git" gitee-source/ ./
+
+      - name: 提交并推送更改（如果有）
+        run: |
+          git add .
+          if ! git diff --quiet; then
+            git commit -m "Sync from Gitee at $(date -u '+%Y-%m-%d %H:%M:%S')"
+            git push
+          else
+            echo "No changes to commit."
+          fi
